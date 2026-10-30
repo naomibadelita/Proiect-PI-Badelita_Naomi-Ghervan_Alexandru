@@ -23,6 +23,6 @@ Analysis of similar articles / applications / projects from the last 5 years.
 - **Additional comments** – observations on relevance to the current project; suggestions for improving the methodology.
 
 ## Proposed Architecture
-
+![diagram](images/schema.png)
 
 ### Components
