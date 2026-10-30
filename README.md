@@ -7,8 +7,6 @@
 
 Analysis of similar articles / applications / projects from the last 5 years.
 
-<div aligne="center>
-
 |No.| Author(s) / Year | Title of the article / project | Application / Domain | Technologies used | Methodology / Approach | Results | Limitations | Additional comments |
 |-----|------------------|----------------------------------------------------|----------------------|-------------------|------------------------|---------|-------------|---------------------|
 | 1 | Teena Sharma et al./2022 | Deep Learning-Based Object Detection and Scene Perception under Bad Weather Conditions | Autonomous Driving and road safety| Python, OpenCV, Google Colab cloud, YOLOv5, Roboflow | The YOLOv5 algorithm was pretrained with COCO weights and fine-tuned with Roboflow images (11 classes) for 100 epochs. The performance of the model was evaluated through a simulated video under normal weather conditions and rainy weather conditions.| precision=0.474, recall=0.337, mAP=0.258 | They evaluated the model using digitally simulated rain, not real life adverse weather conditions. Moreover, they didn't have many examples of all the labels (4 for traffic lights, 27 for bikers out of 1520 labels)| The algorithm is not trained on multiple weather conditions, the rain was digitally simulated. The algorithm should have been trained on multiple weather conditions and these conditions should not be simulated. Also, a bigger diveristy in labels would make a big difference. |
@@ -16,8 +14,6 @@ Analysis of similar articles / applications / projects from the last 5 years.
 | 3 | Madhavi Kondapally et al./2024| Object Detection in Transitional Weather Conditions for Autonomous Vehicles| AIWD6 dataset, Resnet50, Python 3.7, PyTorch, TensorFlow, GRL,DETR transformer, NVIDIA Tesla M60 GPU with 8GB of memory| | | | | |
 | 4 | Debasis Kumar and Naveed Muhammad | Object Detection in Adverse Weather for Autonomous Driving through Data Merging and YOLOv8 | YOLO8 Python Google Colab Roboflow | Resizing the images in the datasets ti 640x640 and 1280x1280. Training using Google Colab and Python to train YOLOv8 on 2715 training images, 720 validation images, 383 testing images. Tested 5 versions of images: original, 640x640 with augumantation, 640x640 without augumentation, 1280x1280 with augumenation and without  | the 1280x1280 images had a better mAP, the best being the one with augumentation and but the higher resoulution took longer to compute. The 640x640 augumented is a good middel road | | | |
 | 5 | | | | | | | | |
-
-</div>
 
 - **Application / Domain** – domain in which the described solution is applied (e.g., face recognition, augmented reality).
 - **Technologies used** – technologies / hardware used in the project (e.g., OpenCV, TensorFlow, ZED stereo cameras).
