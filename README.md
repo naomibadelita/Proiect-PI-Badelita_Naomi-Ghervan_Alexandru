@@ -30,6 +30,29 @@ Analysis of similar articles / applications / projects from the last 5 years.
 Once the image is received by the application, it will be analyzed to detect if it was taken during the day or night, also it will be evaluated to classify the weather condition (Fog, Rain, Snow etc.). 
 ## Dynamic Image Enhancement 
 Based on the results of the initial evaluation, the image will be directed to one of the 8 specialized enhancement filters, which will normalize the image by mitigating the visual noise caused by that weather and lighting combination.
+
+### Day/Night detection
+Converting the image to HSV from RGB using OpenCV then averaging the V chanel to find the average. To find the threshold where we will make the decision between day and night we will use a similar approach as this [repository](https://github.com/arunnthevapalan/day-night-classifier) wich found a succes of 93.75% accuracy after only 200 images (100 for day and 100 for night)
+
+### Wheather type detection
+#### Rain
+Converting the image to grayscale. We blur the image using a [Gauss filter](https://en.wikipedia.org/wiki/Gaussian_blur) to blur the image and lose the fine details then we substract the blured image from the normal image and we should de left with the noise in the image. Rain drops are usualy elongated vertical and we can use a vertical ege detection Kerenel to highlight the drops. The we binaarize the image and check the density of pixeles and decide if it is raining.
+
+-[Source](https://www.mdpi.com/2076-3417/12/22/11628)
+
+#### Snow
+To detect snow we will average the V from the image and see if it is above a certain threshold that will be decided after some testing.
+
+#### Fog
+Images in foggy weather are usualy effected by bad contrast. The bad contrast detection is made calculating a the histogram and seeing if it is centered in a certain part. To enhance teh image we can equalize the histogram.
+
+-[Source](https://publications.ri.cmu.edu/storage/publications/pub_files/pub4/narasimhan_srinivasa_g_2003_1/narasimhan_srinivasa_g_2003_1.pdf)
+
+#### Sandstorme
+Images taken in a sandstorme have similar features as images taken in foggy weather only a higher red/green level and a low blue level. To improve the image we will use a color-balancing method and equalizing the histogram for enhancing contrast.
+
+-[Source](https://www.mdpi.com/2073-8994/14/11/2310)
+
 ## Object Detection
 The enhanced image is given to a custom-trained YOLOv8n model. Considering that the image has been cleaned of the visual noise, the YOLO model will be able to perform real-time bounding box prediction and object recognition.
 ## Output
