@@ -3,6 +3,12 @@
 ## Project Description
 A Python-based image processing application that uses CNNs and YOLOv8n architectures to detect and recognize objects in traffic under adverse weather conditions (Fog, Rain, etc.).
 
+## Table of Contents
+- [Project Description](#project-description)
+- [State of the Art](#state-of-the-art)
+- [Proposed Architecture](#proposed-architecture)
+- [Components](#components)
+
 ## State of the Art
 
 Analysis of similar articles / applications / projects from the last 5 years.
@@ -31,6 +37,6 @@ Once the image is received by the application, it will be analyzed to detect if 
 ## Dynamic Image Enhancement 
 Based on the results of the initial evaluation, the image will be directed to one of the 8 specialized enhancement filters, which will normalize the image by mitigating the visual noise caused by that weather and lighting combination.
 ## Object Detection
-The enhanced image is given to a custom-trained YOLOv8n model. Considering that the image has been cleaned of the visual noise, the YOLO model will be able to perform real-time bounding box prediction and object recognition.
+The enhanced image is given to a custom-trained YOLOv8n model. Considering that the image has been cleaned of the visual noise, the YOLO model will be able to perform real-time bounding box prediction and object recognition. To measure the effectivnes of our filters, the unenhanced image is fed into a pre-trained YOLO model to establish a baseline.
 ## Output
-The final result is the image with the detection and recognition results. 
+The final result is a comparative output of both detection streams. By displaying both results, the system evaluates and highlights the performance improvements such as higher confidence scores and better detection accuracy in adverse weather conditions, achieved by the custom YOLO model on the enhanced image compared to the baseline model on the raw image.
