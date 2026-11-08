@@ -1,0 +1,11 @@
+.venv/
+.idea/
+__pycache__/
+*.pyc
+data_raw/
+dataset/
+runs/
+*.pt
+*.zip
+*.tar.gz
+.env
