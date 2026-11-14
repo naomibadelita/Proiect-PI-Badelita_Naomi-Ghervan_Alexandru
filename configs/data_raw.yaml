@@ -1,0 +1,15 @@
+path: './dataset/raw'
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: dummy_0
+  1: person
+  2: bicycle
+  3: car
+  4: motorcycle
+  5: dummy_5
+  6: bus
+  7: dummy_7
+  8: truck
