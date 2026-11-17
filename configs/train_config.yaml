@@ -2,7 +2,7 @@ paths:
   image_dir: "dataset/raw/images/train"
   labels_dir: "dataset/raw/labels/train"
   imageVal_dir: "dataset/raw/images/val"
-  labelsVal_dir: "dataset/raw/labels/avl"
+  labelsVal_dir: "dataset/raw/labels/val"
 
 train:
   epochs: 60
