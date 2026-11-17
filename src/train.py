@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader
-from dataset import DawnDataset,custom_collate_fn
+from data.dataset import DawnDataset,custom_collate_fn
 from pathlib import Path
 import yaml
 import numpy as np
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from ultralytics.nn.tasks import DetectionModel
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 with open (PROJECT_ROOT/ "configs" /"train_config.yaml","r") as f:
     config=yaml.safe_load(f)
 
@@ -27,9 +27,9 @@ image_resize=config["train"]["imgsz"]
 batch_size=config["train"]["batchsize"]
 number_workers=config["train"]["workers"]
 
-image_train=DawnDataset(image_dir,labels_dir)
+image_train=DawnDataset(image_dir,labels_dir,train=True)
 image_loader=DataLoader(image_train,batch_size,shuffle=True,num_workers=number_workers,collate_fn=custom_collate_fn)
-val_dataset=DawnDataset(imageVal_dir,labelsVal_dir)
+val_dataset=DawnDataset(imageVal_dir,labelsVal_dir,train=False)
 val_loader=DataLoader(val_dataset,batch_size,shuffle=False,num_workers=number_workers,collate_fn=custom_collate_fn)
 
 #YOLO
@@ -119,6 +119,7 @@ for epoch in range(epochs):
     avg_val_loss = val_loss_accum / len(val_loader)
     print(f"Epoch {epoch+1}/{epochs} | train {avg_train_loss:.4f} | val {avg_val_loss:.4f}")
     if avg_val_loss < best_val_loss:
+        epochs_no_improve = 0
         best_val_loss = avg_val_loss
         checkpoint = {
             "model": yolo_model,
@@ -138,7 +139,10 @@ cale_pre = str(PROJECT_ROOT / "configs" / "data_preprocessed.yaml")
 for nume, cale in [("RAW", cale_raw), ("PREPROCESSED", cale_pre)]:
     print(f"=== TEST {nume} ===")
     m = final_model.val(data=cale, split="test")
-    print(f"mAP50-95: {m.box.map:.4f}")
-    print(f"mAP50:    {m.box.map50:.4f}")
+    print(f"mAP50-95:  {m.box.map:.4f}")
+    print(f"mAP50:     {m.box.map50:.4f}")
     print(f"Precision: {m.box.p.mean():.4f}")
     print(f"Recall:    {m.box.r.mean():.4f}")
+    for i, name in NAMES.items():
+        if i in m.box.ap_class_index:
+            print(f"  {name}: AP50-95 = {m.box.maps[i]:.4f}")

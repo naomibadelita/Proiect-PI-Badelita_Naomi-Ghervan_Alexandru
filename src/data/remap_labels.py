@@ -10,7 +10,7 @@ for split in ["train", "val", "test"]:
     src = src_root / split
     dst = dst_root / split
     if not src.exists():
-        print(f"Lipsește: {src}")
+        print(f"Missing: {src}")
         continue
     dst.mkdir(parents=True, exist_ok=True)
     for txt in src.glob("*.txt"):
@@ -24,4 +24,4 @@ for split in ["train", "val", "test"]:
                 parts[0] = str(CLASS_MAP[old_id])
                 new_lines.append(" ".join(parts))
         (dst / txt.name).write_text("\n".join(new_lines) + ("\n" if new_lines else ""))
-    print(f"{split}: gata")
+    print(f"{split}: done")
