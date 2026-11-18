@@ -1,8 +1,12 @@
 paths:
   image_dir: "dataset/raw/images/train"
+  image_dirp: "dataset/preprocessed/images/train"
   labels_dir: "dataset/raw/labels/train"
+  labels_dirp: "dataset/preprocessed/labels/train"
   imageVal_dir: "dataset/raw/images/val"
+  imageVal_dirp: "dataset/preprocessed/images/val"
   labelsVal_dir: "dataset/raw/labels/val"
+  labelsVal_dirp: "dataset/preprocessed/labels/val"
 
 train:
   epochs: 60

@@ -68,7 +68,8 @@ criterias=v8DetectionLoss(yolo_model)
 
 save_dir = PROJECT_ROOT / "runs" / "custom_train"
 save_dir.mkdir(parents=True, exist_ok=True) 
-best_model_raw_path = save_dir / "best_model_raw.pt"
+TRAIN_TAG = "trainRAW"
+best_model_path = save_dir / f"best_model_{TRAIN_TAG}.pt"
 best_val_loss = float('inf')              
 
 
@@ -79,7 +80,7 @@ patience = config["train"]["patience"]
 
 wandb.init(
     project="Project-Object-Detection-Traffic",  
-    name="YOLOv8n-Custom-Train", 
+    name=f"YOLOv8n-{TRAIN_TAG}", 
     config=config              
 )
 
@@ -138,7 +139,7 @@ for epoch in range(epochs):
             "model": yolo_model,
             "train_args": {}  # Punem un dicționar gol pentru a preveni alte erori la instanțiere
         }
-        torch.save(checkpoint, best_model_raw_path)
+        torch.save(checkpoint, best_model_path)
     else:
         epochs_no_improve += 1
         if epochs_no_improve >= patience:
@@ -147,56 +148,35 @@ for epoch in range(epochs):
 
 wandb.finish()
 
-final_model = YOLO(save_dir / "best_model_raw.pt")
-cale_raw = str(PROJECT_ROOT / "configs" / "data_raw.yaml")
-cale_pre = str(PROJECT_ROOT / "configs" / "data_preprocessed.yaml")
+final_model = YOLO(save_dir / f"best_model_{TRAIN_TAG}.pt")
+for nume, tag in [("RAW", "raw"), ("PREPROCESSED", "preprocessed")]:
+    print(f"=== {TRAIN_TAG} -> TEST {nume} ===")
+    cale = str(PROJECT_ROOT / "configs" / f"data_{tag}.yaml")
+    m = final_model.val(data=cale, split="test", imgsz=image_resize,
+                        device=device_id, verbose=False, plots=False)
 
-for nume, cale in [("RAW", cale_raw), ("PREPROCESSED", cale_pre)]:
-    print(f"=== TEST {nume} ===")
-    m = final_model.val(data=cale, split="test", verbose=False)
-    
-    table_data = []
+    test_img_dir = PROJECT_ROOT / "dataset" / tag / "images" / "test"
+    test_lbl_dir = PROJECT_ROOT / "dataset" / tag / "labels" / "test"
+    n_test_imgs = len([p for p in test_img_dir.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp"}])
+    n_test_inst = sum(1 for p in test_lbl_dir.glob("*.txt")
+                      for line in open(p) if line.strip())
 
-    total_images = len(val_dataset) 
-    total_instances = sum(m.box.ap_class_index) if hasattr(m.box, 'ap_class_index') else 0 
-    table_data.append({
-        'Class': 'all',
-        'Images': total_images,
-        'Instances': sum([len(targets) for _, targets in val_dataset]),
-        'Box(P)': m.box.p.mean(),
-        'R': m.box.r.mean(),
-        'mAP50': m.box.map50,
-        'mAP50-95': m.box.map
-    })
+    rows = [{'Class': 'all', 'Images': n_test_imgs, 'Instances': n_test_inst,
+             'Box(P)': m.box.mp, 'R': m.box.mr,
+             'mAP50': m.box.map50, 'mAP50-95': m.box.map}]
 
-    for i, class_name in NAMES.items():
-        if i in m.box.ap_class_index:
-             class_index_in_results = list(m.box.ap_class_index).index(i)
-             
-             table_data.append({
-                'Class': class_name,
-                'Images': 'N/A', 
-                'Instances': 'N/A', 
-                'Box(P)': m.box.p[class_index_in_results], 
-                'R': m.box.r[class_index_in_results],
-                'mAP50': m.box.maps[class_index_in_results],
-                'mAP50-95': m.box.ap[class_index_in_results] 
-             })
+    present = {int(c): pos for pos, c in enumerate(m.box.ap_class_index)}
+    for cid, class_name in NAMES.items():
+        if cid in present:
+            p, r, ap50, ap = m.box.class_result(present[cid])
+            rows.append({'Class': class_name, 'Images': 'N/A', 'Instances': 'N/A',
+                         'Box(P)': p, 'R': r, 'mAP50': ap50, 'mAP50-95': ap})
         else:
-             table_data.append({
-                 'Class': class_name,
-                 'Images': 0,
-                 'Instances': 0,
-                 'Box(P)': 0.0,
-                 'R': 0.0,
-                 'mAP50': 0.0,
-                 'mAP50-95': 0.0
-             })
+            rows.append({'Class': class_name, 'Images': 0, 'Instances': 0,
+                         'Box(P)': 0.0, 'R': 0.0, 'mAP50': 0.0, 'mAP50-95': 0.0})
 
-    df = pd.DataFrame(table_data)
-    cale_salvare_csv = PROJECT_ROOT / "runs" / "detect" / f"metrici_tabelare_{nume}.csv"
-
-    cale_salvare_csv.parent.mkdir(parents=True, exist_ok=True)
-
-    df.to_csv(cale_salvare_csv, index=False)
-    print(f"The metrics were saved at: {cale_salvare_csv}")
+    df = pd.DataFrame(rows)
+    csv_path = PROJECT_ROOT / "runs" / "detect" / f"metrici_{TRAIN_TAG}_test{nume}.csv"
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(csv_path, index=False)
+    print(f"The metrics were saved at: {csv_path}")
