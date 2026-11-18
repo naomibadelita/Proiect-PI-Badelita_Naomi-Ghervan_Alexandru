@@ -22,6 +22,7 @@ class DawnDataset(Dataset):
         )
         self.image_size=config["train"]["imgsz"]
         self.train=train
+        self.aug=config.get("augment", {}) or {}
 
     def __len__(self):
         return len(self.image_list)
@@ -50,7 +51,7 @@ class DawnDataset(Dataset):
                         boxes.append([class_id, x, y, box_w, box_h])
 
         # flip orizontal (doar la train)
-        if self.train and torch.rand(1).item() < 0.5:
+        if self.train and _rand() < self.aug.get("fliplr", 0.5):
             img = cv2.flip(img, 1)
             for b in boxes:
                 b[1] = 1.0 - b[1]
@@ -72,6 +73,14 @@ class DawnDataset(Dataset):
             b[2] = (b[2] * new_h + pad_y) / S
             b[3] = (b[3] * new_w) / S
             b[4] = (b[4] * new_h) / S
+
+        # augmentari suplimentare (doar la train) -> reduc overfitting-ul
+        if self.train:
+            canvas = _augment_hsv(canvas, self.aug.get("hsv_h", 0.015),
+                                  self.aug.get("hsv_s", 0.5), self.aug.get("hsv_v", 0.3))
+            canvas, boxes = _random_scale_translate(canvas, boxes, self.aug.get("scale", 0.4),
+                                                    self.aug.get("translate", 0.1),
+                                                    self.aug.get("min_box_frac", 0.25))
 
         # tensorul se creează DIN canvas, la final
         image_rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
@@ -103,3 +112,51 @@ def custom_collate_fn(batch):
         batch_targets = torch.zeros((0, 6), dtype=torch.float32)
         
     return images, batch_targets
+
+
+def _rand(a=0.0, b=1.0):
+    # torch.rand e seed-uit corect per worker de DataLoader (np.random nu este)
+    return a + (b - a) * torch.rand(1).item()
+
+
+def _augment_hsv(img, hgain, sgain, vgain):
+    """Jitter aleator de nuanta/saturatie/luminozitate (img BGR uint8)."""
+    if not (hgain or sgain or vgain):
+        return img
+    r = np.array([_rand(-1, 1) * hgain + 1, _rand(-1, 1) * sgain + 1, _rand(-1, 1) * vgain + 1])
+    hue, sat, val = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HSV))
+    x = np.arange(0, 256, dtype=r.dtype)
+    lut_hue = ((x * r[0]) % 180).astype(np.uint8)
+    lut_sat = np.clip(x * r[1], 0, 255).astype(np.uint8)
+    lut_val = np.clip(x * r[2], 0, 255).astype(np.uint8)
+    hsv = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
+    return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+
+def _random_scale_translate(img, boxes, scale, translate, min_box_frac):
+    """Zoom + deplasare aleatoare; cutiile (cls, xc, yc, w, h normalizate) sunt transformate,
+    decupate la marginea imaginii si eliminate daca a ramas prea putin din ele."""
+    if not (scale or translate):
+        return img, boxes
+    S = img.shape[0]
+    s = _rand(1 - scale, 1 + scale)
+    tx = _rand(-translate, translate) * S
+    ty = _rand(-translate, translate) * S
+    c = S / 2
+    M = np.array([[s, 0, (1 - s) * c + tx], [0, s, (1 - s) * c + ty]], dtype=np.float32)
+    img = cv2.warpAffine(img, M, (S, S), borderValue=(114, 114, 114))
+
+    out = []
+    for cls, xc, yc, bw, bh in boxes:
+        x1, y1 = (xc - bw / 2) * S, (yc - bh / 2) * S
+        x2, y2 = (xc + bw / 2) * S, (yc + bh / 2) * S
+        x1, x2 = x1 * s + M[0, 2], x2 * s + M[0, 2]
+        y1, y2 = y1 * s + M[1, 2], y2 * s + M[1, 2]
+        area_before = (x2 - x1) * (y2 - y1)
+        x1, x2 = np.clip([x1, x2], 0, S)
+        y1, y2 = np.clip([y1, y2], 0, S)
+        nw, nh = x2 - x1, y2 - y1
+        if nw < 2 or nh < 2 or area_before <= 0 or (nw * nh) / area_before < min_box_frac:
+            continue
+        out.append([cls, (x1 + x2) / 2 / S, (y1 + y2) / 2 / S, nw / S, nh / S])
+    return img, out
