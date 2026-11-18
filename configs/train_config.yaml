@@ -1,8 +1,12 @@
 paths:
   image_dir: "dataset/raw/images/train"
+  image_dirp: "dataset/preprocessed/images/train"
   labels_dir: "dataset/raw/labels/train"
+  labels_dirp: "dataset/preprocessed/labels/train"
   imageVal_dir: "dataset/raw/images/val"
-  labelsVal_dir: "dataset/raw/labels/avl"
+  imageVal_dirp: "dataset/preprocessed/images/val"
+  labelsVal_dir: "dataset/raw/labels/val"
+  labelsVal_dirp: "dataset/preprocessed/labels/val"
 
 train:
   epochs: 60
@@ -12,17 +16,16 @@ train:
   lr0: 0.001
   lrf: 0.01            
   warmup_epochs: 3
-  weight_decay: 0.01  
+  weight_decay: 0.01   
   device: 0
   workers: 2
   seed: 42
 
-
 augment:
-  fliplr: 0.5    
-  hsv_h: 0.015    
-  hsv_s: 0.5     
-  hsv_v: 0.3      
-  scale: 0.4     
-  translate: 0.1   
-  min_box_frac: 0.25 
+  fliplr: 0.5      # probabilitate flip orizontal
+  hsv_h: 0.015     # jitter nuanta (fractie)
+  hsv_s: 0.5       # jitter saturatie
+  hsv_v: 0.3       # jitter luminozitate
+  scale: 0.4       # zoom aleator in [1-scale, 1+scale]
+  translate: 0.1   # deplasare aleatoare (fractie din imgsz)
+  min_box_frac: 0.25  # se pastreaza cutiile din care a ramas cel putin 25% dupa decupare
