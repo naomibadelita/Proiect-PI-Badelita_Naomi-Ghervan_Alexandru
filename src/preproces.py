@@ -3,6 +3,7 @@ import numpy as np
 import os
 import scipy.ndimage
 
+
 def resize_image(image, width, height):
     image = image.resize((width, height))
     return image
@@ -211,39 +212,156 @@ def test():
     print(f"total{(clean + w_rain + w_fog + w_snow + w_sand) / total * 100}")
     file.close()
 
-def fog_enhancing(img):
-    equal=ImageOps.equalize(img)
-    contrast=ImageEnhance.Contrast(equal)
-
-    result=contrast.enhance(0.7)
-
-    return result
 
 def rain_removal(img):
-    result=img.filter(ImageFilter.MedianFilter(9))
+    gray_img = img.convert('L')
 
-    out=fog_enhancing(result)
+    gray = np.array(gray_img, dtype=np.float32)
+
+    blur = np.array(gray_img.filter(ImageFilter.GaussianBlur(radius=3)), dtype=np.float32)
+
+    noise = gray - blur
+
+    vert_diff = np.abs(gray[1:, :] - gray[:-1, :])
+    vert_diff = np.vstack([vert_diff, np.zeros((1, gray.shape[1]))])
+
+    rain_mask = (noise > 15) & (vert_diff > 15)
+
+    struct = np.ones((3, 3), dtype=bool)
+    rain_mask_dilated = scipy.ndimage.binary_dilation(rain_mask, structure=struct)
+    mask_img = Image.fromarray((rain_mask_dilated * 255).astype(np.uint8), mode='L')
+
+    median_filtered = img.filter(ImageFilter.MedianFilter(size=9))
+
+    derained_base = Image.composite(median_filtered, img, mask_img)
+
+    out = fog_enhancing(derained_base)
+    out = brighten(out)
 
     return out
+
+def get_dark_channel(img, patch_size=15):
+    r, g, b = img.split()
+    min_rgb = ImageChops.darker(ImageChops.darker(r, g), b)
+
+    if patch_size % 2 == 0:
+        patch_size += 1
+
+    return min_rgb.filter(ImageFilter.MinFilter(size=patch_size))
+
+def fog_enhancing(img, patch_size=15, omega=0.95):
+    img = img.convert("RGB")
+    width, height = img.size
+    pixels = list(img.getdata())
+
+    dc_img = get_dark_channel(img, patch_size)
+    dc_pixels = list(dc_img.getdata())
+
+    num_pixels = max(int(width * height * 0.001), 1)
+
+    sorted_indices = sorted(range(len(dc_pixels)), key=lambda i: dc_pixels[i])
+    top_indices = sorted_indices[-num_pixels:]
+
+    sum_r, sum_g, sum_b = 0, 0, 0
+    for i in top_indices:
+        r, g, b = pixels[i]
+        sum_r += r
+        sum_g += g
+        sum_b += b
+
+    A = (sum_r / num_pixels, sum_g / num_pixels, sum_b / num_pixels)
+
+    norm_pixels = [
+        (min(255, int(255 * (r / max(A[0], 1)))),
+         min(255, int(255 * (g / max(A[1], 1)))),
+         min(255, int(255 * (b / max(A[2], 1)))))
+        for r, g, b in pixels
+    ]
+    norm_img = Image.new("RGB", img.size)
+    norm_img.putdata(norm_pixels)
+
+    norm_dc = get_dark_channel(norm_img, patch_size)
+
+    t_values = [1.0 - omega * (val / 255.0) for val in norm_dc.getdata()]
+
+    t_img = Image.new("L", img.size)
+    t_img.putdata([int(t * 255) for t in t_values])
+
+    t_img = t_img.filter(ImageFilter.GaussianBlur(radius=patch_size * 2))
+
+    t_values = [val / 255.0 for val in t_img.getdata()]
+
+    t0 = 0.5
+    recovered_pixels = []
+
+    for i in range(len(pixels)):
+        r, g, b = pixels[i]
+        t = max(t_values[i], t0)
+
+        new_r = int(max(min((r - A[0]) / t + A[0], 255), 0))
+        new_g = int(max(min((g - A[1]) / t + A[1], 255), 0))
+        new_b = int(max(min((b - A[2]) / t + A[2], 255), 0))
+
+        recovered_pixels.append((new_r, new_g, new_b))
+
+    final_img = Image.new("RGB", img.size)
+    final_img.putdata(recovered_pixels)
+
+    return final_img
+
+def brighten(img, gamma=1.8):
+    img = img.convert("RGB")
+
+    inv_gamma = 1.0 / gamma
+
+    table = [int(((i / 255.0) ** inv_gamma) * 255) for i in range(256)]
+    table = table * 3
+
+    brightened_img = img.point(table)
+
+    return brightened_img
+
+def remove_yellow(img):
+    arr=np.array(img, dtype=np.float32)
+
+    mean_r = np.mean(arr[:,:,0])
+    mean_g = np.mean(arr[:, :, 1])
+    mean_b = np.mean(arr[:, :, 2])
+
+    mean=(mean_r+mean_g+mean_b)/3
+
+    arr[:, :, 0] = arr[:, :, 0] * (mean / max(mean_r, 1))
+    arr[:, :, 1] = arr[:, :, 1] * (mean / max(mean_g, 1))
+    arr[:, :, 2] = arr[:, :, 2] * (mean / max(mean_b, 1))
+
+    arr = np.clip(arr, 0, 255).astype(np.uint8)
+
+    return Image.fromarray(arr)
+
 
 def enhance(img):
     day, weather = weather_detection(img)
 
+    image = img.resize((1280, 1280))
+
     if weather==1:
-        out=fog_enhancing(img)
+        out=fog_enhancing(image)
+        out=brighten(out)
     elif weather==2:
-        out=rain_removal(img)
+        out=rain_removal(image)
     elif weather==4:
-        out=fog_enhancing(img)
+        out=remove_yellow(image)
+        out=fog_enhancing(out)
+        out = brighten(out)
     else:
-        out=img
+        out=image
 
     return out
 
 if "__main__" == __name__:
-    img=Image.open("../images/preprocesare/test/Rain/Rain/rain_storm-002.jpg")
+    img=Image.open("../images/preprocesare/test/Sand/Sand/dusttornado-004.jpg")
 
-    defog=rain_removal(img)
+    fin=enhance(img)
 
     img.show()
-    defog.show()
+    fin.show()
