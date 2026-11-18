@@ -9,7 +9,8 @@ from torch.optim import AdamW
 from ultralytics.utils.loss import v8DetectionLoss
 from types import SimpleNamespace
 from ultralytics.nn.tasks import DetectionModel
-
+import pandas as pd
+import wandb
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 with open (PROJECT_ROOT/ "configs" /"train_config.yaml","r") as f:
@@ -76,6 +77,12 @@ epochs=config["train"]["epochs"]
 epochs_no_improve = 0
 patience = config["train"]["patience"]
 
+wandb.init(
+    project="Project-Object-Detection-Traffic",  
+    name="YOLOv8n-Custom-Train", 
+    config=config              
+)
+
 for epoch in range(epochs):
     yolo_model.train()
     train_loss_accum = 0.0
@@ -118,6 +125,12 @@ for epoch in range(epochs):
 
     avg_val_loss = val_loss_accum / len(val_loader)
     print(f"Epoch {epoch+1}/{epochs} | train {avg_train_loss:.4f} | val {avg_val_loss:.4f}")
+    wandb.log({
+        "epoch": epoch + 1,
+        "train_loss": avg_train_loss,
+        "val_loss": avg_val_loss,
+        "learning_rate": optimizer.param_groups[0]['lr'] # Opțional: util să vezi cum evoluează lr-ul
+    })
     if avg_val_loss < best_val_loss:
         epochs_no_improve = 0
         best_val_loss = avg_val_loss
@@ -132,17 +145,58 @@ for epoch in range(epochs):
             print(f"Early stopping la epoca {epoch+1}")
             break
 
+wandb.finish()
+
 final_model = YOLO(save_dir / "best_model_raw.pt")
 cale_raw = str(PROJECT_ROOT / "configs" / "data_raw.yaml")
 cale_pre = str(PROJECT_ROOT / "configs" / "data_preprocessed.yaml")
 
 for nume, cale in [("RAW", cale_raw), ("PREPROCESSED", cale_pre)]:
     print(f"=== TEST {nume} ===")
-    m = final_model.val(data=cale, split="test")
-    print(f"mAP50-95:  {m.box.map:.4f}")
-    print(f"mAP50:     {m.box.map50:.4f}")
-    print(f"Precision: {m.box.p.mean():.4f}")
-    print(f"Recall:    {m.box.r.mean():.4f}")
-    for i, name in NAMES.items():
+    m = final_model.val(data=cale, split="test", verbose=False)
+    
+    table_data = []
+
+    total_images = len(val_dataset) 
+    total_instances = sum(m.box.ap_class_index) if hasattr(m.box, 'ap_class_index') else 0 
+    table_data.append({
+        'Class': 'all',
+        'Images': total_images,
+        'Instances': sum([len(targets) for _, targets in val_dataset]),
+        'Box(P)': m.box.p.mean(),
+        'R': m.box.r.mean(),
+        'mAP50': m.box.map50,
+        'mAP50-95': m.box.map
+    })
+
+    for i, class_name in NAMES.items():
         if i in m.box.ap_class_index:
-            print(f"  {name}: AP50-95 = {m.box.maps[i]:.4f}")
+             class_index_in_results = list(m.box.ap_class_index).index(i)
+             
+             table_data.append({
+                'Class': class_name,
+                'Images': 'N/A', 
+                'Instances': 'N/A', 
+                'Box(P)': m.box.p[class_index_in_results], 
+                'R': m.box.r[class_index_in_results],
+                'mAP50': m.box.maps[class_index_in_results],
+                'mAP50-95': m.box.ap[class_index_in_results] 
+             })
+        else:
+             table_data.append({
+                 'Class': class_name,
+                 'Images': 0,
+                 'Instances': 0,
+                 'Box(P)': 0.0,
+                 'R': 0.0,
+                 'mAP50': 0.0,
+                 'mAP50-95': 0.0
+             })
+
+    df = pd.DataFrame(table_data)
+    cale_salvare_csv = PROJECT_ROOT / "runs" / "detect" / f"metrici_tabelare_{nume}.csv"
+
+    cale_salvare_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    df.to_csv(cale_salvare_csv, index=False)
+    print(f"The metrics were saved at: {cale_salvare_csv}")
