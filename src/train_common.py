@@ -2,7 +2,6 @@ import math
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
-
 import numpy as np
 import pandas as pd
 import torch
@@ -25,7 +24,7 @@ IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 
 VARIANTS = {
     "raw": ("trainRAW", ""),
-    #"preprocessed": ("trainPRE", "p"),
+    "preprocessed": ("trainPRE", "p"),
 }
 
 MODELS = {

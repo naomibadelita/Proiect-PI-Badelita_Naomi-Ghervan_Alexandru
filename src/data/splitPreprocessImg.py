@@ -22,7 +22,7 @@ DEST_DIR = DATASET_DIR / "preprocessed"
 
 VALID_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp"}
 #SPLITS = ["train", "val", "test"]
-SPLITS = ["test"] 
+SPLITS = ["val"] 
 
 def preprocess_dataset(src_dir: Path, dest_dir: Path):
     for split in SPLITS:
