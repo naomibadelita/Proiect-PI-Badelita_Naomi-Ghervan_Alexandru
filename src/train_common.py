@@ -1,13 +1,3 @@
-"""Bucla de antrenare comuna pentru train.py (RAW) si train_preprocessed.py (PRE).
-
-Fata de varianta veche:
-  * la fiecare epoca se calculeaza P, R, mAP50, mAP50-95 pe VAL, overall si pe fiecare clasa,
-    se trimit in W&B si se scriu in runs/custom_train/metrics_per_epoch_<TAG>.csv
-  * modelul "best" se alege dupa fitness (0.1*mAP50 + 0.9*mAP50-95), nu dupa val loss
-  * anti-overfitting: augmentari mai puternice (vezi dataset.py), warmup + cosine LR,
-    EMA pe greutati, weight decay doar pe greutati (nu pe BN/bias), gradient clipping
-  * la test se salveaza CSV cu Images/Instances reale pentru fiecare clasa
-"""
 import math
 from copy import deepcopy
 from pathlib import Path
@@ -78,15 +68,12 @@ def metrics_rows(m, labels_dir: Path, images_dir: Path):
 
 
 def loss_components(loss_items):
-    """(box, cls, dfl) ca tensor pe CPU. Ultralytics < 8.4 intoarce un tensor, >= 8.4 un dict."""
     if isinstance(loss_items, dict):
         return torch.stack([v.detach().float().reshape(()) for v in loss_items.values()][:3]).cpu()
     return loss_items.detach().float().reshape(-1)[:3].cpu()
 
 
 def resolve_data_yaml(tag: str, out_dir: Path) -> str:
-    """Copie a configs/data_<tag>.yaml cu 'path' absolut, ca validarea sa mearga
-    indiferent din ce folder e pornit scriptul (local sau in Colab)."""
     with open(PROJECT_ROOT / "configs" / f"data_{tag}.yaml") as f:
         data = yaml.safe_load(f)
     data["path"] = str((PROJECT_ROOT / data["path"]).resolve())
@@ -97,12 +84,10 @@ def resolve_data_yaml(tag: str, out_dir: Path) -> str:
 
 
 def save_checkpoint(model, path: Path):
-    # acelasi format ca inainte, ca YOLO(path) sa il poata incarca
     torch.save({"model": deepcopy(model).float(), "train_args": {}}, path)
 
 
 def build_optimizer(model, lr, weight_decay):
-    """Weight decay doar pe greutatile conv/linear; BN si bias fara decay (ca in Ultralytics)."""
     decay, no_decay = [], []
     for module in model.modules():
         for name, p in module.named_parameters(recurse=False):
@@ -204,7 +189,6 @@ def run_training(variant: str):
             it += 1
         tr_loss /= len(train_loader)
 
-        # ---------------- val loss (pe modelul EMA) ----------------
         ema.ema.eval()
         va_loss = torch.zeros(3)
         with torch.no_grad():
@@ -218,7 +202,6 @@ def run_training(variant: str):
                 va_loss += loss_components(v_items)
         va_loss /= len(val_loader)
 
-        # ---------------- mAP pe VAL, overall + per clasa ----------------
         save_checkpoint(ema.ema, last_path)
         m = YOLO(last_path).val(data=data_yaml, split="val", imgsz=image_resize, batch=batch_size * 2,
                                 device=device_id, workers=workers, verbose=False, plots=False,
@@ -252,7 +235,6 @@ def run_training(variant: str):
                 print(f"Early stopping la epoca {epoch + 1}")
                 break
 
-    # ---------------- test final pe best ----------------
     final_model = YOLO(best_path)
     test_tables = {}
     for nume, tag in [("RAW", "raw"), ("PREPROCESSED", "preprocessed")]:
