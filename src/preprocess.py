@@ -342,7 +342,7 @@ def remove_yellow(img):
 def enhance(img):
     day, weather = weather_detection(img)
 
-    #image = img.resize((1280, 1280))
+    #image = img.resize((640, 640))
 
     if weather==1:
         out=fog_enhancing(img)
