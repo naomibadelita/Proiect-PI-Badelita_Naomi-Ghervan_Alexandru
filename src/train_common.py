@@ -24,14 +24,12 @@ NC = len(NAMES)
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 
 VARIANTS = {
-    # variant -> (tag pentru fisiere, sufix chei in train_config.yaml)
     "raw": ("trainRAW", ""),
     "preprocessed": ("trainPRE", "p"),
 }
 
 
 def count_per_class(labels_dir: Path, images_dir: Path):
-    """Numarul de imagini si de instante pentru fiecare clasa (ca in tabelul Ultralytics)."""
     n_images = len([p for p in images_dir.iterdir() if p.suffix.lower() in IMG_EXT])
     imgs_with = {c: 0 for c in NAMES}
     instances = {c: 0 for c in NAMES}
@@ -52,7 +50,6 @@ def count_per_class(labels_dir: Path, images_dir: Path):
 
 
 def metrics_rows(m, labels_dir: Path, images_dir: Path):
-    """Transforma rezultatul YOLO.val() intr-o lista de randuri: 'all' + cate unul pe clasa."""
     n_images, imgs_with, instances = count_per_class(labels_dir, images_dir)
     rows = [{"Class": "all", "Images": n_images, "Instances": sum(instances.values()),
              "P": m.box.mp, "R": m.box.mr, "mAP50": m.box.map50, "mAP50-95": m.box.map}]
@@ -170,7 +167,6 @@ def run_training(variant: str):
 
     it = 0
     for epoch in range(epochs):
-        # ---------------- train ----------------
         model.train()
         tr_loss = torch.zeros(3)  # box, cls, dfl
         for inputs, targets in train_loader:
