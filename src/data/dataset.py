@@ -120,7 +120,6 @@ def _rand(a=0.0, b=1.0):
 
 
 def _augment_hsv(img, hgain, sgain, vgain):
-    """Jitter aleator de nuanta/saturatie/luminozitate (img BGR uint8)."""
     if not (hgain or sgain or vgain):
         return img
     r = np.array([_rand(-1, 1) * hgain + 1, _rand(-1, 1) * sgain + 1, _rand(-1, 1) * vgain + 1])
@@ -134,8 +133,6 @@ def _augment_hsv(img, hgain, sgain, vgain):
 
 
 def _random_scale_translate(img, boxes, scale, translate, min_box_frac):
-    """Zoom + deplasare aleatoare; cutiile (cls, xc, yc, w, h normalizate) sunt transformate,
-    decupate la marginea imaginii si eliminate daca a ramas prea putin din ele."""
     if not (scale or translate):
         return img, boxes
     S = img.shape[0]
