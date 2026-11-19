@@ -90,7 +90,7 @@ def weather_detection(image):
     snow=snow_detection(arr_hsv)
     sand=snd_detection(arr_hsv)
 
-    if day<50:
+    if day<60:
         is_day=1
     else:
         is_day=0
@@ -98,6 +98,7 @@ def weather_detection(image):
 
     if fog>90:
         snow=snow-fog*0.05
+
     scores = {
         0: 50,
         4: sand,
@@ -121,6 +122,7 @@ def test():
     w_sand = 0
     w_fog = 0
     w_clean=0
+    w_night=0
 
     total = -1
     rain = 0
@@ -128,6 +130,7 @@ def test():
     sand = 0
     fog = 0
     clean=0
+    night=0
 
     f = ["../images/preprocesare/test/Fog/Fog",
          "../images/preprocesare/test/Rain/Rain",
@@ -150,8 +153,15 @@ def test():
                         #im.show()
                         day, weather = weather_detection(im)
 
-                        if day == day_i:
-                            w_day += 1
+                        if day==0:
+                            night=night+1
+
+                        if day_i==day:
+                            if day==1:
+                                w_day+=1
+                            else:
+                                w_night+=1
+
 
                         if weather_i == 1:
                             fog += 1
@@ -203,7 +213,8 @@ def test():
                 except(Exception) as e:
                     pass
 
-    print(f"day={w_day / total * 100}")
+    print(f"day={w_day / (total-night) * 100}")
+    print(f"night={w_night / night * 100}")
     print(f"rain={w_rain / rain * 100}")
     print(f"snow={w_snow / snow * 100}")
     print(f"fog={w_fog / fog * 100}")
@@ -342,26 +353,27 @@ def remove_yellow(img):
 def enhance(img):
     day, weather = weather_detection(img)
 
-    image = img.resize((1280, 1280))
+    #image = img.resize((1280, 1280))
 
     if weather==1:
-        out=fog_enhancing(image)
+        out=fog_enhancing(img)
         out=brighten(out)
     elif weather==2:
-        out=rain_removal(image)
+        out=rain_removal(img)
     elif weather==4:
-        out=remove_yellow(image)
+        out=remove_yellow(img)
         out=fog_enhancing(out)
         out = brighten(out)
     else:
-        out=image
+        out=img
 
     return out
 
 if "__main__" == __name__:
-    img=Image.open("../images/preprocesare/test/Sand/Sand/dusttornado-004.jpg")
-
-    fin=enhance(img)
-
-    img.show()
-    fin.show()
+    # img=Image.open("../images/preprocesare/test/Sand/Sand/dusttornado-004.jpg")
+    #
+    # fin=enhance(img)
+    #
+    # img.show()
+    # fin.show()
+    test()
