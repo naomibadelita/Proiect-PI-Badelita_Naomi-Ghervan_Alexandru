@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from PIL import Image
 
-from src.preproces import enhance   
+from src.preprocess import enhance   
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,8 +21,8 @@ SRC_DIR = DATASET_DIR / "raw"
 DEST_DIR = DATASET_DIR / "preprocessed"
 
 VALID_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp"}
-SPLITS = ["train", "val", "test"]
-
+#SPLITS = ["train", "val", "test"]
+SPLITS = ["test"] 
 
 def preprocess_dataset(src_dir: Path, dest_dir: Path):
     for split in SPLITS:
@@ -34,7 +34,7 @@ def preprocess_dataset(src_dir: Path, dest_dir: Path):
         dst_lbl_dir.mkdir(parents=True, exist_ok=True)
 
         files = [f for f in src_img_dir.iterdir()
-                 if f.suffix.lower() in VALID_IMAGE_EXTS]
+                if f.suffix.lower() in VALID_IMAGE_EXTS]
         logger.info("Split %s: %d images", split, len(files))
 
         ok, failed = 0, 0

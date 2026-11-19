@@ -25,7 +25,7 @@ IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 
 VARIANTS = {
     "raw": ("trainRAW", ""),
-    "preprocessed": ("trainPRE", "p"),
+    #"preprocessed": ("trainPRE", "p"),
 }
 
 MODELS = {
